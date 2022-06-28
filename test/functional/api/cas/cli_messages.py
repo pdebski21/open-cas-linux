@@ -85,6 +85,13 @@ load_and_force = [
     r" simultaneously is forbidden."
 ]
 
+standby_init_with_preexisting_metadata = [
+    r"Error inserting cache \d+",
+    r"Old metadata found on device.",
+    r"Please load cache metadata using --load option or use --force to",
+    r"discard on-disk metadata and start fresh cache instance."
+]
+
 try_add_core_sector_size_mismatch = [
     r"Error while adding core device to cache instance \d+",
     r"Cache device logical sector size is greater than core device logical sector size\.",
