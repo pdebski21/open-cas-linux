@@ -19,6 +19,7 @@ from api.cas.cli_messages import (
     missing_param,
     disallowed_param,
     standby_init_with_preexisting_metadata,
+    standby_init_with_preexisting_filesystem,
 )
 from api.cas.cache_config import CacheLineSize, CacheMode
 from api.cas.cli import standby_activate_cmd, standby_load_cmd, standby_init_cmd
@@ -26,6 +27,7 @@ from api.cas.ioclass_config import IoClass
 from test_tools.dd import Dd
 from test_utils.os_utils import sync
 from test_utils.filesystem.file import File
+from test_tools.disk_utils import Filesystem
 
 block_size = Size(1, Unit.Blocks512)
 
@@ -230,6 +232,55 @@ def test_standby_init_with_preexisting_metadata():
         if not check_stderr_msg(output, standby_init_with_preexisting_metadata):
             TestRun.LOGGER.error(
                 f"Invalid error message. Expected {standby_init_with_preexisting_metadata}."
+                f"Got {output.stderr}"
+            )
+
+    with TestRun.step("Try initialize cache with force flag"):
+        casadm.standby_init(
+            cache_dev=cache_device,
+            cache_line_size=int(cls.value.value / Unit.KibiByte.value),
+            cache_id=cache_id,
+            force=True,
+        )
+
+    with TestRun.step("Verify whether passive instance is running"):
+        caches = casadm_parser.get_caches()
+        if len(caches) != 1:
+            TestRun.LOGGER.error("Standby cache instance is not running!")
+
+
+@pytest.mark.require_disk("cache", DiskTypeSet([DiskType.nand, DiskType.optane]))
+@pytest.mark.require_disk("core", DiskTypeLowerThan("cache"))
+@pytest.mark.parametrizex("filesystem", Filesystem)
+def test_standby_init_with_preexisting_filesystem(filesystem):
+    """
+    title: Initialize standby cache instance with preexisting filesystem
+    description: |
+
+    pass_criteria:
+      -
+    """
+    with TestRun.step("Prepare device for cache"):
+        cache_device = TestRun.disks["cache"]
+        cache_device.create_partitions([Size(200, Unit.MebiByte)])
+        cache_device = cache_device.partitions[0]
+        cls = CacheLineSize.LINE_32KiB
+        cache_id = 1
+
+    with TestRun.step("Create filesystem on cache device partition"):
+        cache_device.create_filesystem(filesystem)
+
+    with TestRun.step("Try initialize cache without force flag"):
+        output = TestRun.executor.run(
+            standby_init_cmd(
+                cache_dev=cache_device.path,
+                cache_id=str(cache_id),
+                cache_line_size=str(int(cls.value.value / Unit.KibiByte.value)),
+            )
+        )
+        if not check_stderr_msg(output, standby_init_with_preexisting_filesystem):
+            TestRun.LOGGER.error(
+                f"Invalid error message. Expected {standby_init_with_preexisting_filesystem}."
                 f"Got {output.stderr}"
             )
 

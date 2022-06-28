@@ -92,6 +92,10 @@ standby_init_with_preexisting_metadata = [
     r"discard on-disk metadata and start fresh cache instance."
 ]
 
+standby_init_with_preexisting_filesystem = [
+    r"Error inserting cache \d+",
+]
+
 try_add_core_sector_size_mismatch = [
     r"Error while adding core device to cache instance \d+",
     r"Cache device logical sector size is greater than core device logical sector size\.",
